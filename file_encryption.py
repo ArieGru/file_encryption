@@ -1,45 +1,10 @@
-import base64
 import hashlib
-from Crypto import Random
-from Crypto.Cipher import AES
-from Crypto.Protocol.KDF import scrypt
-from Crypto.Random import get_random_bytes
 import os
 import sys
+import getpass
+from AESCipher import *
 
-SALT_LEN = 16
 SHA512_LEN = 64
-
-class AESCipher(object):
-
-    def __init__(self, password, salt = None):
-        self.bs = AES.block_size
-        if salt == None:
-            self.salt = get_random_bytes(SALT_LEN)
-        else:
-            self.salt = salt
-        self.key = scrypt(password, self.salt, 16, N=2**14, r=self.bs, p=1)
-
-    def encrypt(self, raw):
-        raw = self._pad(raw)
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + cipher.encrypt(raw))
-
-    def decrypt(self, enc):
-        enc = base64.b64decode(enc)
-        iv = enc[:AES.block_size]
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return AESCipher._unpad(cipher.decrypt(enc[AES.block_size:]))
-
-    def _pad(self, s):
-        pad = ((self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)).encode()
-        return s + pad
-
-    @staticmethod
-    def _unpad(s):
-        return s[:-ord(s[len(s)-1:])]
-
 
 def encrypt_file(path, password, hashed_pass):
     aes = AESCipher(password)
@@ -71,7 +36,7 @@ def decrypt_file(path, password):
 
 def password_input(salt):
     print('enter password: ')
-    password = input()
+    password = getpass.getpass()
     hashed_pass = password + salt
     hashed_pass = hashlib.sha512(hashed_pass.encode()).digest()
     return (password, hashed_pass)
@@ -93,6 +58,7 @@ def main():
                 print(f'file {path} not found')
             else:
                 print('unknown error occured')
+                print(f'{ex.args}')
             sys.exit()
                 
     elif sys.argv[1] == 'unlock':
